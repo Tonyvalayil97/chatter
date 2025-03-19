@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import ollama
 import fitz  # PyMuPDF for PDF parsing
+import io
 
 # Function to extract invoice details based on the prompt
 def extract_invoice_details(prompt, text):
@@ -15,13 +16,17 @@ def extract_invoice_details(prompt, text):
 # Function to handle file upload and extract text
 def process_invoice(uploaded_file, prompt):
     try:
+        # Read the uploaded file as a binary stream
+        file_bytes = uploaded_file.read()
+
         # Check file type and read accordingly
         if uploaded_file.type == "text/plain":
             # Read as plain text
-            invoice_text = uploaded_file.read().decode('utf-8')
+            invoice_text = file_bytes.decode('utf-8')
         elif uploaded_file.type == "application/pdf":
             # Use PyMuPDF to extract text from PDF
-            pdf = fitz.open(uploaded_file)
+            pdf_file = io.BytesIO(file_bytes)  # Convert bytes to a file-like object
+            pdf = fitz.open(pdf_file)
             invoice_text = ""
             for page_num in range(pdf.page_count):
                 page = pdf.load_page(page_num)

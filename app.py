@@ -20,14 +20,14 @@ def extract_text_using_ocr(file_bytes):
     headers = {"Authorization": "Bearer YOUR_API_KEY"}
 
     files = {
-        "file": ("invoice.pdf", file_bytes)
+        "file": ("invoice.pdf", file_bytes)  # Name here is irrelevant, can be any name
     }
     response = requests.post(api_url, headers=headers, files=files)
     
     if response.status_code == 200:
         return response.json().get("text", "")
     else:
-        return "Error in OCR extraction: " + response.text
+        return f"Error in OCR extraction: {response.text}"
 
 # Function to handle file upload and extract text
 def process_invoice(uploaded_file, prompt):
@@ -96,3 +96,4 @@ if uploaded_file is not None:
                 data=open(excel_file, "rb"),
                 file_name=excel_file
             )
+

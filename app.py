@@ -5,6 +5,7 @@ import PyPDF2  # For extracting text from PDFs
 from sentence_transformers import SentenceTransformer  # For embeddings
 from sklearn.metrics.pairwise import cosine_similarity  # For similarity search
 import numpy as np
+pip install sentence-transformers
 
 # Initialize the embedding model
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')

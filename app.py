@@ -14,6 +14,10 @@ def extract_invoice_details(prompt, text):
 # Function to handle file upload and extract text
 def process_invoice(uploaded_file, prompt):
     try:
+        # Debugging: Print file type and first few bytes
+        st.write(f"Uploaded file type: {uploaded_file.type}")
+        st.write(f"First 100 bytes of file content: {uploaded_file.getvalue()[:100]}")  # Show first 100 bytes for debugging
+        
         # Check file type and read accordingly
         if uploaded_file.type == "text/plain":
             invoice_text = uploaded_file.read().decode('utf-8')
@@ -25,6 +29,9 @@ def process_invoice(uploaded_file, prompt):
             for page_num in range(pdf.page_count):
                 page = pdf.load_page(page_num)
                 invoice_text += page.get_text()
+
+        else:
+            return "Unsupported file type. Please upload a .txt or .pdf file."
 
         # Extract details based on the prompt
         extracted_details = extract_invoice_details(prompt, invoice_text)

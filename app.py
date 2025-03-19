@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import ollama
+import fitz  # PyMuPDF for PDF parsing
 
 # Function to extract invoice details based on the prompt
 def extract_invoice_details(prompt, text):
@@ -14,21 +15,17 @@ def extract_invoice_details(prompt, text):
 # Function to handle file upload and extract text
 def process_invoice(uploaded_file, prompt):
     try:
-        # Debugging: Print file type and first few bytes
-        st.write(f"Uploaded file type: {uploaded_file.type}")
-        st.write(f"First 100 bytes of file content: {uploaded_file.getvalue()[:100]}")  # Show first 100 bytes for debugging
-        
         # Check file type and read accordingly
         if uploaded_file.type == "text/plain":
+            # Read as plain text
             invoice_text = uploaded_file.read().decode('utf-8')
         elif uploaded_file.type == "application/pdf":
-            # Use PyMuPDF or PyPDF2 to extract text from PDF
-            import fitz  # PyMuPDF
+            # Use PyMuPDF to extract text from PDF
             pdf = fitz.open(uploaded_file)
             invoice_text = ""
             for page_num in range(pdf.page_count):
                 page = pdf.load_page(page_num)
-                invoice_text += page.get_text()
+                invoice_text += page.get_text("text")  # Get text from each page
 
         else:
             return "Unsupported file type. Please upload a .txt or .pdf file."
@@ -74,4 +71,3 @@ if uploaded_file is not None:
                 data=open(excel_file, "rb"),
                 file_name=excel_file
             )
-

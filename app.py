@@ -1,9 +1,13 @@
 import streamlit as st
-import pandas as pd
 import os
-import subprocess
 from tempfile import NamedTemporaryFile
 import PyPDF2  # For extracting text from PDFs
+from sentence_transformers import SentenceTransformer  # For embeddings
+from sklearn.metrics.pairwise import cosine_similarity  # For similarity search
+import numpy as np
+
+# Initialize the embedding model
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Function to extract text from a PDF file
 def extract_text_from_pdf(file_path):
@@ -14,70 +18,62 @@ def extract_text_from_pdf(file_path):
             text += page.extract_text()
     return text
 
-# Function to process the uploaded file using Ollama and Mistral
-def process_invoice(file_content):
+# Function to generate embeddings for text
+def generate_embeddings(text):
+    return embedding_model.encode(text)
+
+# Function to perform similarity search
+def retrieve_relevant_text(query_embedding, text_embeddings, texts, top_k=3):
+    similarities = cosine_similarity([query_embedding], text_embeddings)[0]
+    top_indices = np.argsort(similarities)[-top_k:][::-1]
+    return [texts[i] for i in top_indices]
+
+# Function to interact with Ollama and Mistral
+def ask_mistral(question, context):
     # Use Ollama to interact with Mistral
-    # Replace this with your actual command to interact with Ollama and Mistral
-    command = f"ollama run mistral 'Extract company, amount, and weight from this invoice: {file_content}'"
+    command = f"ollama run mistral 'Answer this question based on the context: {question}. Context: {context}'"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
-
-    # Parse the result (this is a placeholder, adjust based on your actual output)
-    # Example output: "Company: Example Company, Amount: $1000, Weight: 50kg"
-    output = result.stdout.strip()
-    data = {"Company": [], "Amount": [], "Weight": []}
-
-    # Extract data from the output (this is a simple example)
-    if "Company:" in output:
-        data["Company"].append(output.split("Company:")[1].split(",")[0].strip())
-    if "Amount:" in output:
-        data["Amount"].append(output.split("Amount:")[1].split(",")[0].strip())
-    if "Weight:" in output:
-        data["Weight"].append(output.split("Weight:")[1].strip())
-
-    return data
+    return result.stdout.strip()
 
 # Streamlit app
-st.title("Invoice Extractor")
-st.write("Upload invoices to extract company, amount, and weight.")
+st.title("Invoice Query System")
+st.write("Upload invoices and ask questions about them.")
 
 # Allow multiple file uploads
-uploaded_files = st.file_uploader("Upload Invoices", type=["pdf", "txt", "docx"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload Invoices", type=["pdf"], accept_multiple_files=True)
 
 if uploaded_files:
-    all_data = []  # To store extracted data from all files
-
+    # Extract text from all uploaded files
+    all_texts = []
     for uploaded_file in uploaded_files:
-        # Save the uploaded file temporarily
         with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
             tmp_file_path = tmp_file.name
-
-        # Extract text from the PDF
-        file_content = extract_text_from_pdf(tmp_file_path)
-
-        # Process the invoice
-        st.write(f"Processing {uploaded_file.name}...")
-        extracted_data = process_invoice(file_content)
-
-        # Add file name to the extracted data
-        extracted_data["File Name"] = uploaded_file.name
-        all_data.append(extracted_data)
-
-        # Clean up
+        text = extract_text_from_pdf(tmp_file_path)
+        all_texts.append(text)
         os.unlink(tmp_file_path)
 
-    # Combine all extracted data into a single DataFrame
-    if all_data:
-        df = pd.DataFrame(all_data)
-        st.write("Extracted Data from All Files:")
-        st.dataframe(df)
+    # Generate embeddings for all texts
+    text_embeddings = [generate_embeddings(text) for text in all_texts]
 
-        # Generate Excel file
-        excel_file = "extracted_data.xlsx"
-        df.to_excel(excel_file, index=False)
-        st.download_button(
-            label="Download Excel",
-            data=open(excel_file, "rb").read(),
-            file_name=excel_file,
-            mime="application/vnd.ms-excel"
-        )
+    # Flatten texts and embeddings for retrieval
+    all_texts_flat = [text for text in all_texts]
+    text_embeddings_flat = np.array(text_embeddings)
+
+    # User input for question
+    question = st.text_input("Ask a question about the invoices:")
+
+    if question:
+        # Generate embedding for the question
+        question_embedding = generate_embeddings(question)
+
+        # Retrieve relevant text based on the question
+        relevant_texts = retrieve_relevant_text(question_embedding, text_embeddings_flat, all_texts_flat)
+
+        # Combine relevant texts into context
+        context = " ".join(relevant_texts)
+
+        # Ask Mistral the question
+        answer = ask_mistral(question, context)
+        st.write("Answer:")
+        st.write(answer)

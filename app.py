@@ -15,10 +15,7 @@ def extract_text_from_pdf(file_path):
     return text
 
 # Function to process the uploaded file using Ollama and Mistral
-def process_invoice(file_path):
-    # Extract text from the PDF
-    file_content = extract_text_from_pdf(file_path)
-
+def process_invoice(file_content):
     # Use Ollama to interact with Mistral
     # Replace this with your actual command to interact with Ollama and Mistral
     command = f"ollama run mistral 'Extract company, amount, and weight from this invoice: {file_content}'"
@@ -37,39 +34,50 @@ def process_invoice(file_path):
     if "Weight:" in output:
         data["Weight"].append(output.split("Weight:")[1].strip())
 
-    df = pd.DataFrame(data)
-    return df
+    return data
 
 # Streamlit app
 st.title("Invoice Extractor")
-st.write("Upload an invoice to extract company, amount, and weight.")
+st.write("Upload invoices to extract company, amount, and weight.")
 
-# File upload
-uploaded_file = st.file_uploader("Upload Invoice", type=["pdf", "txt", "docx"])
+# Allow multiple file uploads
+uploaded_files = st.file_uploader("Upload Invoices", type=["pdf", "txt", "docx"], accept_multiple_files=True)
 
-if uploaded_file is not None:
-    # Save the uploaded file temporarily
-    with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        tmp_file.write(uploaded_file.getvalue())
-        tmp_file_path = tmp_file.name
+if uploaded_files:
+    all_data = []  # To store extracted data from all files
 
-    # Process the invoice
-    st.write("Processing invoice...")
-    df = process_invoice(tmp_file_path)
+    for uploaded_file in uploaded_files:
+        # Save the uploaded file temporarily
+        with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+            tmp_file.write(uploaded_file.getvalue())
+            tmp_file_path = tmp_file.name
 
-    # Display the extracted data
-    st.write("Extracted Data:")
-    st.dataframe(df)
+        # Extract text from the PDF
+        file_content = extract_text_from_pdf(tmp_file_path)
 
-    # Generate Excel file
-    excel_file = "extracted_data.xlsx"
-    df.to_excel(excel_file, index=False)
-    st.download_button(
-        label="Download Excel",
-        data=open(excel_file, "rb").read(),
-        file_name=excel_file,
-        mime="application/vnd.ms-excel"
-    )
+        # Process the invoice
+        st.write(f"Processing {uploaded_file.name}...")
+        extracted_data = process_invoice(file_content)
 
-    # Clean up
-    os.unlink(tmp_file_path)
+        # Add file name to the extracted data
+        extracted_data["File Name"] = uploaded_file.name
+        all_data.append(extracted_data)
+
+        # Clean up
+        os.unlink(tmp_file_path)
+
+    # Combine all extracted data into a single DataFrame
+    if all_data:
+        df = pd.DataFrame(all_data)
+        st.write("Extracted Data from All Files:")
+        st.dataframe(df)
+
+        # Generate Excel file
+        excel_file = "extracted_data.xlsx"
+        df.to_excel(excel_file, index=False)
+        st.download_button(
+            label="Download Excel",
+            data=open(excel_file, "rb").read(),
+            file_name=excel_file,
+            mime="application/vnd.ms-excel"
+        )

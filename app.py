@@ -6,17 +6,28 @@ from tempfile import NamedTemporaryFile
 
 # Function to process the uploaded file using Ollama and Mistral
 def process_invoice(file_path):
+    # Read the file content
+    with open(file_path, "r") as file:
+        file_content = file.read()
+
     # Use Ollama to interact with Mistral
     # Replace this with your actual command to interact with Ollama and Mistral
-    command = f"ollama run mistral 'Extract company, amount, and weight from this invoice: {file_path}'"
+    command = f"ollama run mistral 'Extract company, amount, and weight from this invoice: {file_content}'"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    
+
     # Parse the result (this is a placeholder, adjust based on your actual output)
-    data = {
-        "Company": ["Example Company"],
-        "Amount": ["$1000"],
-        "Weight": ["50kg"]
-    }
+    # Example output: "Company: Example Company, Amount: $1000, Weight: 50kg"
+    output = result.stdout.strip()
+    data = {"Company": [], "Amount": [], "Weight": []}
+
+    # Extract data from the output (this is a simple example)
+    if "Company:" in output:
+        data["Company"].append(output.split("Company:")[1].split(",")[0].strip())
+    if "Amount:" in output:
+        data["Amount"].append(output.split("Amount:")[1].split(",")[0].strip())
+    if "Weight:" in output:
+        data["Weight"].append(output.split("Weight:")[1].strip())
+
     df = pd.DataFrame(data)
     return df
 

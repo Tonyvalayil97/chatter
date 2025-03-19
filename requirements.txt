@@ -1,5 +1,4 @@
 streamlit
-sentence-transformers
-scikit-learn
-numpy
-PyPDF2
+ollama
+pandas
+openpyxl

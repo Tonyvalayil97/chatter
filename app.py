@@ -3,6 +3,7 @@ import pandas as pd
 import ollama
 import fitz  # PyMuPDF for PDF parsing
 import io
+import requests
 
 # Function to extract invoice details based on the prompt
 def extract_invoice_details(prompt, text):
@@ -12,6 +13,21 @@ def extract_invoice_details(prompt, text):
         'context': text
     })
     return response.get('text', '')
+
+# Function to extract text using Mistral OCR API (for scanned PDFs)
+def extract_text_using_ocr(file_bytes):
+    api_url = "YOUR_MISTRAL_OCR_API_URL"
+    headers = {"Authorization": "Bearer YOUR_API_KEY"}
+
+    files = {
+        "file": ("invoice.pdf", file_bytes)
+    }
+    response = requests.post(api_url, headers=headers, files=files)
+    
+    if response.status_code == 200:
+        return response.json().get("text", "")
+    else:
+        return "Error in OCR extraction: " + response.text
 
 # Function to handle file upload and extract text
 def process_invoice(uploaded_file, prompt):
@@ -24,13 +40,17 @@ def process_invoice(uploaded_file, prompt):
             # Read as plain text
             invoice_text = file_bytes.decode('utf-8')
         elif uploaded_file.type == "application/pdf":
-            # Use PyMuPDF to extract text from PDF
+            # Use PyMuPDF to extract text from PDF (if text-based PDF)
             pdf_file = io.BytesIO(file_bytes)  # Convert bytes to a file-like object
             pdf = fitz.open(pdf_file)
             invoice_text = ""
             for page_num in range(pdf.page_count):
                 page = pdf.load_page(page_num)
                 invoice_text += page.get_text("text")  # Get text from each page
+
+            # If text extraction is empty, attempt OCR (for scanned PDF)
+            if not invoice_text.strip():
+                invoice_text = extract_text_using_ocr(file_bytes)
 
         else:
             return "Unsupported file type. Please upload a .txt or .pdf file."

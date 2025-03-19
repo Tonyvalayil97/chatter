@@ -1,33 +1,13 @@
 import streamlit as st
 import pandas as pd
-import ollama
 import fitz  # PyMuPDF for PDF parsing
 import io
-import requests
 
 # Function to extract invoice details based on the prompt
 def extract_invoice_details(prompt, text):
-    model = ollama.Model('mistral')
-    response = model.prompt({
-        'prompt': prompt,
-        'context': text
-    })
-    return response.get('text', '')
-
-# Function to extract text using Mistral OCR API (for scanned PDFs)
-def extract_text_using_ocr(file_bytes):
-    api_url = "YOUR_MISTRAL_OCR_API_URL"
-    headers = {"Authorization": "Bearer YOUR_API_KEY"}
-
-    files = {
-        "file": ("invoice.pdf", file_bytes)  # Name here is irrelevant, can be any name
-    }
-    response = requests.post(api_url, headers=headers, files=files)
-    
-    if response.status_code == 200:
-        return response.json().get("text", "")
-    else:
-        return f"Error in OCR extraction: {response.text}"
+    # For simplicity, we'll simulate the extraction by just returning the text
+    # You can expand this logic to match more sophisticated extraction
+    return f"Extracted data based on the prompt '{prompt}':\n{text}"
 
 # Function to handle file upload and extract text
 def process_invoice(uploaded_file, prompt):
@@ -48,9 +28,9 @@ def process_invoice(uploaded_file, prompt):
                 page = pdf.load_page(page_num)
                 invoice_text += page.get_text("text")  # Get text from each page
 
-            # If text extraction is empty, attempt OCR (for scanned PDF)
+            # If no text is found, inform the user (this may be an image-based PDF)
             if not invoice_text.strip():
-                invoice_text = extract_text_using_ocr(file_bytes)
+                return "No text found in the PDF. It may be a scanned image-based PDF."
 
         else:
             return "Unsupported file type. Please upload a .txt or .pdf file."
@@ -96,4 +76,3 @@ if uploaded_file is not None:
                 data=open(excel_file, "rb"),
                 file_name=excel_file
             )
-

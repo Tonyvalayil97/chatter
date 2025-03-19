@@ -3,12 +3,21 @@ import pandas as pd
 import os
 import subprocess
 from tempfile import NamedTemporaryFile
+import PyPDF2  # For extracting text from PDFs
+
+# Function to extract text from a PDF file
+def extract_text_from_pdf(file_path):
+    with open(file_path, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text()
+    return text
 
 # Function to process the uploaded file using Ollama and Mistral
 def process_invoice(file_path):
-    # Read the file content
-    with open(file_path, "r") as file:
-        file_content = file.read()
+    # Extract text from the PDF
+    file_content = extract_text_from_pdf(file_path)
 
     # Use Ollama to interact with Mistral
     # Replace this with your actual command to interact with Ollama and Mistral
